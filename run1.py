@@ -7,7 +7,25 @@ import torch
 model_name = "monologg/kobert"  # 또는 "roberta-base" 등
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = AutoModelForTokenClassification.from_pretrained(model_name, num_labels=2)  # num_labels는 레이블 수
-dataset = pd.read_csv('./selectstar-location.csv')
+raw_dataset = pd.read_csv('./selectstar-location.csv')
+
+# 데이터를 레이블링하기 위한 함수
+def create_labels(sentence, positions):
+    tokens = list(sentence)  # 문장을 문자 단위로 토큰화
+    labels = ['O'] * len(tokens)
+
+    for start, end in positions:
+        labels[start] = 'B-PROFANITY'
+        for i in range(start + 1, end + 1):
+            labels[i] = 'I-PROFANITY'
+
+    return tokens, labels
+
+# 데이터셋 생성하기
+dataset = []
+for index, row in raw_dataset.iterrows():
+    tokens, labels = create_labels(row['문장'], row['욕설 위치'])
+    dataset.append((tokens, labels))
 
 texts, labels = zip(*dataset)
 
