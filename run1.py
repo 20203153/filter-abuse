@@ -11,13 +11,14 @@ raw_dataset = pd.read_csv('./selectstar-location.csv')
 
 # 데이터를 레이블링하기 위한 함수
 def create_labels(sentence, positions):
-    tokens = list(sentence)  # 문장을 문자 단위로 토큰화
+    tokens = list(sentence)
     labels = ['O'] * len(tokens)
 
     for start, end in positions:
         labels[start] = 'B-PROFANITY'
         for i in range(start + 1, end + 1):
-            labels[i] = 'I-PROFANITY'
+            if i < len(labels):  # 인덱스가 범위를 벗어나지 않도록 확인
+                labels[i] = 'I-PROFANITY'
 
     return tokens, labels
 
