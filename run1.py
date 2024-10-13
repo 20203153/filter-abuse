@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from transformers import AutoTokenizer, BertModel
+from transformers import AutoTokenizer, PreTrainedModel, BertModel
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import pandas as pd
@@ -57,14 +57,14 @@ class OffensiveLanguageDataset(Dataset):
             'targets': torch.tensor(target, dtype=torch.float)              # 전체 욕설 여부
         }
 
-class MultiOffensiveLanguageModel(nn.Module):
+class MultiOffensiveLanguageModel(PreTrainedModel):
     def __init__(self, model_name, num_labels=1):
-        super(MultiOffensiveLanguageModel, self).__init__()
+        super(MultiOffensiveLanguageModel, self).__init__(config=BertModel.from_pretrained(model_name).config)
         self.bert = BertModel.from_pretrained(model_name)
         self.classification_layer = nn.Linear(self.bert.config.hidden_size, num_labels)  # 욕설 여부
         self.start_layer = nn.Linear(self.bert.config.hidden_size, 1)  # 시작 위치
         self.end_layer = nn.Linear(self.bert.config.hidden_size, 1)  # 끝 위치
-        
+
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids, attention_mask=attention_mask)
         hidden_states = outputs.last_hidden_state  # [batch_size, seq_len, hidden_size]
@@ -72,8 +72,13 @@ class MultiOffensiveLanguageModel(nn.Module):
         classification_logits = self.classification_layer(hidden_states)  # [batch_size, seq_len, num_labels]
         start_logits = self.start_layer(hidden_states)  # [batch_size, seq_len, 1]
         end_logits = self.end_layer(hidden_states)  # [batch_size, seq_len, 1]
-        
+
         return classification_logits, start_logits, end_logits
+
+    def save_pretrained(self, save_directory):
+        # Save the model configuration and the model itself
+        self.bert.save_pretrained(save_directory)
+        self.save_model(save_directory)  # This method should save the additional linear layers if any
 
 # 하이퍼파라미터 설정
 max_len = 256
